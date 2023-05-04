@@ -1,11 +1,11 @@
+use dotenv::dotenv;
+use firebase_rs::*;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 
-use firebase_rs::*;
-use serde::{Deserialize, Serialize};
-
 #[derive(Serialize, Deserialize, Debug)]
-struct User {
+struct Person {
     name: String,
     age: u8,
     email: String,
@@ -21,11 +21,14 @@ struct Response {
 
 #[tokio::main]
 async fn main() {
-    let user = User {
+    let user = Person {
         name: "david".to_string(),
         age: 23,
         email: "david@gmail.com".to_string(),
     };
+
+    // Load the .env file
+    dotenv().ok();
 
     // Get the Firebase URL from an environment variable
     let url = env::var("FIREBASE_DATABASE_URI")
@@ -36,34 +39,32 @@ async fn main() {
 
     let response = set_user(&firebase, &user).await;
 
-    // let user = get_user(&firebase, &response.id).await;
+    let user_found = get_user(&firebase, &response.id).await;
 
-    // println!("{:?}", user);
+    println!("One user{:?}", user_found);
 
-    // let users = get_users(&firebase).await;
+    let users = get_users(&firebase).await;
 
-    // println!("{:?}", users);
+    println!("All users {:?}", users);
 }
 
-async fn set_user(client: &Firebase, user: &User) -> Response {
-    let firebase = client.at("users");
-
-    let _user = firebase.set::<User>(user).await;
-
-    string_to_response(&_user.unwrap().data)
+async fn set_user(firebase_client: &Firebase, user: &Person) -> Response {
+    let firebase = firebase_client.at("persons");
+    let _user = firebase.set::<Person>(&user).await;
+    return string_to_response(&_user.unwrap().data);
 }
 
-// async fn get_user(firebase: &Firebase, id: &str) -> User {
-//     let firebase = firebase.at("users").at(&id);
-//     let user = firebase.get::<User>().await;
-//     user.unwrap()
-// }
+async fn get_user(firebase: &Firebase, id: &str) -> Person {
+    let firebase = firebase.at("persons").at(&id);
+    let user = firebase.get::<Person>().await;
+    user.unwrap()
+}
 
-// async fn get_users(client: &Firebase) -> HashMap<String, User> {
-//     let firebase = client.at("users");
-//     let users = firebase.get::<HashMap<String, User>>().await;
-//     return users.unwrap();
-// }
+async fn get_users(client: &Firebase) -> HashMap<String, Person> {
+    let firebase = client.at("persons");
+    let users = firebase.get::<HashMap<String, Person>>().await;
+    return users.unwrap();
+}
 
 /// Convert a string to a Response struct
 fn string_to_response(s: &str) -> Response {
